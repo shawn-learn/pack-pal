@@ -7,10 +7,14 @@ Pick a trip type, say who's coming, answer about 7 quick questions, and Pack Pal
 ## Start it (Windows)
 
 1. Install **Node.js** (the LTS version) from https://nodejs.org if you don't have it. Pack Pal has no other dependencies, so there's no `npm install` step.
-2. Double-click **`start.bat`**. A window opens showing the addresses, and your browser opens http://localhost:3000.
-3. Close that window to stop Pack Pal.
+2. Double-click **`start.bat`**. Pack Pal starts in the background, your browser opens http://localhost:3000, and a small window shows the addresses for a few seconds before closing by itself.
+3. Double-click **`stop.bat`** to stop Pack Pal. It saves everything before it stops.
 
-From a terminal you can also run `node server.js` (or `npm start`) in this folder.
+Running `start.bat` again while Pack Pal is already running just opens the browser. If something goes wrong, Pack Pal's messages are in `run\pack-pal.log`.
+
+From a terminal you can also run `node server.js` (or `npm start`) in this folder to keep it in that window, and stop it with Ctrl+C.
+
+To start Pack Pal whenever the computer starts, press Win+R, type `shell:startup`, and put a shortcut to `start.bat` in the folder that opens.
 
 The startup window also prints an **"On your Wi-Fi"** address such as `http://192.168.1.20:3000`. Open that on your family's phones. On a phone, use **Add to Home Screen** so it opens like an app.
 
@@ -56,11 +60,12 @@ Other settings you can put in `start.bat` the same way:
 
 Everything is saved in one file: `data\packing-data.json`. Pack Pal also keeps a daily copy in `data\backups\` for the last 14 days. **Family → Download backup** saves a copy wherever you like.
 
-To restore a backup, stop Pack Pal, copy the backup over `data\packing-data.json`, and start it again.
+To restore a backup, stop Pack Pal with `stop.bat`, copy the backup over `data\packing-data.json`, and start it again.
 
 ## For tinkerers
 
 - `seed.js`: the built-in trip types and their packing rules
 - `public/engine.js`: turns rules plus answers into a list
 - `server.js`: a small web server with no dependencies
+- `scripts/pack-pal-ctl.js`: what `start.bat` and `stop.bat` run (`start`, `stop` or `status`)
 - `npm test`: runs the engine tests
