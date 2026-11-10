@@ -136,9 +136,9 @@ test('every item condition points at a real question and option', () => {
   }
 });
 
-test('the ten newer trip types answer their questions', () => {
-  assert.equal(seed.types.length, 23);
-  assert.equal(new Set(seed.types.map((t) => t.id)).size, 23);
+test('the newer trip types answer their questions', () => {
+  assert.equal(seed.types.length, 33);
+  assert.equal(new Set(seed.types.map((t) => t.id)).size, 33);
   const hut = gen('xcski', { activity: ['classic'], gear: 'own', hut: 'yes', avalanche: 'no' });
   assert.ok(find(hut, 'Kick wax & cork'));
   assert.ok(find(hut, 'Sleeping bag', 'kid'));
@@ -158,4 +158,16 @@ test('the ten newer trip types answer their questions', () => {
   const party = gen('wedding', { role: 'party', dresscode: 'formal' });
   assert.ok(find(party, 'Speech or toast notes'));
   assert.ok(find(party, 'Tux or dark suit', 'mom'));
+  const surf = gen('surf', { boards: 'rent', water: 'cold' });
+  assert.ok(find(surf, 'Wetsuit', 'kid'));
+  assert.ok(!find(surf, 'Surfboards'));
+  const camp = gen('summercamp', { camp: 'overnight', sleepbag: 'yes' }, 7, [{ id: 'kid', name: 'Kid', kind: 'kid' }]);
+  assert.ok(find(camp, 'Sleeping bag', 'kid'));
+  assert.ok(!find(camp, 'Lunch box & ice pack', 'kid'));
+  const birth = gen('hospital', { reason: 'birth', partner: 'yes' }, 2, fam.slice(0, 2));
+  assert.ok(find(birth, 'Car seat installed'));
+  assert.ok(!find(birth, 'Button-front or loose tops'));
+  const via = gen('scramble', { route: 'via', snow: 'no' });
+  assert.ok(find(via, 'Via ferrata lanyard set', 'kid'));
+  assert.ok(!find(via, 'Crampons', 'dad'));
 });
