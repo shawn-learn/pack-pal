@@ -47,7 +47,7 @@ function readLog() {
 }
 
 function openBrowser() {
-  const url = `http://localhost:${Number(process.env.PORT) || 3000}`;
+  const url = `http://localhost:${Number(process.env.PORT) || 3300}`;
   const [cmd, args] = process.platform === 'win32' ? ['cmd', ['/c', 'start', '""', url]]
     : process.platform === 'darwin' ? ['open', [url]] : ['xdg-open', [url]];
   try { spawn(cmd, args, { stdio: 'ignore', detached: true, windowsHide: true }).unref(); } catch {}

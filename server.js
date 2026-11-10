@@ -2,7 +2,7 @@
 // Pack Pal server. No dependencies: just run `node server.js`.
 //
 // Settings (environment variables):
-//   PORT           port to listen on (default 3000)
+//   PORT           port to listen on (default 3300)
 //   HOST           address to bind (default 0.0.0.0, so phones on your Wi-Fi can connect)
 //   PACK_PASSWORD  if set, everyone must enter this password once per device
 //   PACK_DATA_DIR  where the data file lives (default ./data)
@@ -15,7 +15,7 @@ const crypto = require('crypto');
 const seed = require('./seed');
 const NEED_IDS = require('./public/engine.js').NEEDS.map((n) => n.id);
 
-const PORT = Number(process.env.PORT) || 3000;
+const PORT = Number(process.env.PORT) || 3300;
 const HOST = process.env.HOST || '0.0.0.0';
 const PASSWORD = process.env.PACK_PASSWORD || '';
 const DATA_DIR = path.resolve(process.env.PACK_DATA_DIR || path.join(__dirname, 'data'));

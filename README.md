@@ -7,7 +7,7 @@ Pick a trip type, say who's coming, answer about 7 quick questions, and Pack Pal
 ## Start it (Windows)
 
 1. Install **Node.js** (the LTS version) from https://nodejs.org if you don't have it. Pack Pal has no other dependencies, so there's no `npm install` step.
-2. Double-click **`start.bat`**. Pack Pal starts in the background, your browser opens http://localhost:3000, and a small window shows the addresses for a few seconds before closing by itself.
+2. Double-click **`start.bat`**. Pack Pal starts in the background, your browser opens http://localhost:3300, and a small window shows the addresses for a few seconds before closing by itself.
 3. Double-click **`stop.bat`** to stop Pack Pal. It saves everything before it stops.
 
 Running `start.bat` again while Pack Pal is already running just opens the browser. If something goes wrong, Pack Pal's messages are in `run\pack-pal.log`.
@@ -16,7 +16,7 @@ From a terminal you can also run `node server.js` (or `npm start`) in this folde
 
 To start Pack Pal whenever the computer starts, press Win+R, type `shell:startup`, and put a shortcut to `start.bat` in the folder that opens.
 
-The startup window also prints an **"On your Wi-Fi"** address such as `http://192.168.1.20:3000`. Open that on your family's phones. On a phone, use **Add to Home Screen** so it opens like an app.
+The startup window also prints an **"On your Wi-Fi"** address such as `http://192.168.1.20:3300`. Open that on your family's phones. On a phone, use **Add to Home Screen** so it opens like an app.
 
 ## First run
 
@@ -52,7 +52,7 @@ Other settings you can put in `start.bat` the same way:
 
 | Setting | Default | What it does |
 |---|---|---|
-| `PORT` | `3000` | Port to listen on |
+| `PORT` | `3300` | Port to listen on |
 | `HOST` | `0.0.0.0` | Use `127.0.0.1` to allow only this computer |
 | `PACK_DATA_DIR` | `.\data` | Where the data file lives |
 
