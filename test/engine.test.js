@@ -118,3 +118,44 @@ test('nights between dates', () => {
   assert.equal(E.nightsBetween('2026-12-20', '2026-12-27'), 7);
   assert.equal(E.nightsBetween('2026-03-07', '2026-03-09'), 2); // across a DST change
 });
+
+test('every item condition points at a real question and option', () => {
+  const derived = new Set(['nights', 'days', 'travelers', 'kids', 'baby', 'pet']);
+  for (const t of seed.types) {
+    const qs = new Map([...seed.core.questions, ...t.questions].map((q) => [q.id, q]));
+    assert.equal(new Set(t.questions.map((q) => q.id)).size, t.questions.length, `${t.id} question ids are unique`);
+    for (const i of t.items) {
+      for (const [qid, want] of Object.entries(i.when || {})) {
+        if (derived.has(qid)) continue;
+        const q = qs.get(qid);
+        assert.ok(q, `${t.id} / ${i.name} uses unknown question ${qid}`);
+        const valid = q.type === 'yesno' ? ['yes', 'no'] : q.options.map((o) => o.value);
+        for (const v of [].concat(want)) assert.ok(valid.includes(v), `${t.id} / ${i.name}: ${qid}=${v} is not an option`);
+      }
+    }
+  }
+});
+
+test('the ten newer trip types answer their questions', () => {
+  assert.equal(seed.types.length, 23);
+  assert.equal(new Set(seed.types.map((t) => t.id)).size, 23);
+  const hut = gen('xcski', { activity: ['classic'], gear: 'own', hut: 'yes', avalanche: 'no' });
+  assert.ok(find(hut, 'Kick wax & cork'));
+  assert.ok(find(hut, 'Sleeping bag', 'kid'));
+  assert.ok(!find(hut, 'Avalanche beacon', 'dad'));
+  const lake = gen('canoe', { boat: 'canoe', boats: 'own', portage: 'yes', overnight: 'no' });
+  assert.ok(find(lake, 'Portage yoke or carry pads'));
+  assert.ok(!find(lake, 'Spray skirt', 'dad'));
+  assert.ok(!find(lake, 'Tent'));
+  const ice = gen('fishing', { where: 'ice', license: 'yes' });
+  assert.ok(find(ice, 'Ice auger'));
+  assert.ok(!find(ice, 'Landing net'));
+  assert.ok(!find(ice, 'Buy fishing licenses'));
+  const hockey = gen('tournament', { sport: 'hockey', outdoor: 'no' });
+  assert.ok(find(hockey, 'Hockey skates, helmet & full gear', 'kid'));
+  assert.ok(!find(hockey, 'Hockey skates, helmet & full gear', 'dad'));
+  assert.ok(find(hockey, 'Blanket for the stands'));
+  const party = gen('wedding', { role: 'party', dresscode: 'formal' });
+  assert.ok(find(party, 'Speech or toast notes'));
+  assert.ok(find(party, 'Tux or dark suit', 'mom'));
+});
