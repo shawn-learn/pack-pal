@@ -505,7 +505,7 @@
       }
     }));
     const num = $('#q-num');
-    if (num) { num.focus(); num.oninput = () => (wiz.answers[q.id] = num.value === '' ? undefined : Number(num.value)); num.onkeydown = (e) => e.key === 'Enter' && next(); }
+    if (num) { num.focus(); num.oninput = () => (wiz.answers[q.id] = num.value === '' ? undefined : Number(num.value)); num.onkeydown = (e) => { if (e.key === 'Enter') next(); }; }
     $('#q-skip').onclick = () => { delete wiz.answers[q.id]; next(); };
     $('#q-next').onclick = next;
     $('#q-back').onclick = () => { if (wiz.qIndex === 0) wiz.step = 'details'; else wiz.qIndex--; renderWizard(); };
@@ -1445,7 +1445,7 @@
         } catch (e) { fail(e); }
       };
       $('#m-save', el).onclick = save;
-      $('#m-name', el).onkeydown = (e) => e.key === 'Enter' && save();
+      $('#m-name', el).onkeydown = (e) => { if (e.key === 'Enter') save(); };
     });
   }
 
