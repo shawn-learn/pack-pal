@@ -27,6 +27,7 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 function freshDb() {
   return {
     version: 1,
+    seedVersion: SEED_VERSION,
     rev: 1,
     secret: crypto.randomBytes(24).toString('hex'),
     members: [],
@@ -46,7 +47,41 @@ function load() {
   }
   const db = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
   db.secret = db.secret || crypto.randomBytes(24).toString('hex');
+  if (migrate(db)) writeFile(db);
   return db;
+}
+
+// Bring an existing data file up to date with new built-in questions,
+// without touching anything the family added or edited themselves.
+const SEED_VERSION = 2;
+function migrate(db) {
+  const from = db.seedVersion || 1;
+  if (from >= SEED_VERSION) return false;
+  if (from < 2) {
+    // v2: "easy-to-forget" questions are asked on every trip, so a few trip types
+    // lost their own copies of those questions.
+    const ess = db.types.find((t) => t.essentials);
+    if (ess) {
+      const qIds = new Set(ess.questions.map((q) => q.id));
+      seed.core.questions.forEach((q) => { if (!qIds.has(q.id)) ess.questions.push(clone(q)); });
+      const iIds = new Set(ess.items.map((i) => i.id));
+      seed.core.items.forEach((i) => { if (!iIds.has(i.id)) ess.items.push(clone(i)); });
+    }
+    const coreQ = new Set(seed.core.questions.map((q) => q.id));
+    const moved = { beach: ['dinners'], ski: ['hottub'], business: ['events', 'workout'], city: ['dinners'], roadtrip: ['pet'], cruise: ['pool'] };
+    for (const [typeId, qids] of Object.entries(moved)) {
+      const t = db.types.find((x) => x.id === typeId);
+      if (!t) continue;
+      t.questions = t.questions.filter((q) => !qids.includes(q.id));
+      const gone = qids.filter((q) => !coreQ.has(q));
+      t.items = t.items.filter((i) => !Object.keys(i.when || {}).some((q) => gone.includes(q)));
+    }
+    const intl = db.types.find((x) => x.id === 'international');
+    if (intl) intl.defaults = Object.assign({ flying: 'yes' }, intl.defaults);
+    console.log('  Updated your trip types with the new easy-to-forget questions.');
+  }
+  db.seedVersion = SEED_VERSION;
+  return true;
 }
 
 function writeFile(db) {
