@@ -13,6 +13,7 @@ const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
 const seed = require('./seed');
+const NEED_IDS = require('./public/engine.js').NEEDS.map((n) => n.id);
 
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -53,7 +54,7 @@ function load() {
 
 // Bring an existing data file up to date with new built-in questions,
 // without touching anything the family added or edited themselves.
-const SEED_VERSION = 2;
+const SEED_VERSION = 3;
 function migrate(db) {
   const from = db.seedVersion || 1;
   if (from >= SEED_VERSION) return false;
@@ -79,6 +80,30 @@ function migrate(db) {
     const intl = db.types.find((x) => x.id === 'international');
     if (intl) intl.defaults = Object.assign({ flying: 'yes' }, intl.defaults);
     console.log('  Updated your trip types with the new easy-to-forget questions.');
+  }
+  if (from < 3) {
+    // v3: glasses, medication and pets come from family profiles instead of trip questions,
+    // and laundry is asked next to the trip dates.
+    const usesOld = (i) => Object.keys(i.when || {}).some((q) => ['eyes', 'pet', 'dog'].includes(q));
+    const ess = db.types.find((t) => t.essentials);
+    if (ess) {
+      ess.questions = ess.questions.filter((q) => !['eyes', 'pet'].includes(q.id));
+      const laundry = ess.questions.find((q) => q.id === 'laundry');
+      const seedLaundry = seed.core.questions.find((q) => q.id === 'laundry');
+      if (laundry && laundry.text === 'Will you be able to do laundry?') Object.assign(laundry, clone(seedLaundry));
+      ess.items = ess.items.filter((i) => !usesOld(i) && i.id !== 'prescription-medications');
+      const iIds = new Set(ess.items.map((i) => i.id));
+      seed.core.items.forEach((i) => { if (!iIds.has(i.id)) ess.items.push(clone(i)); });
+    }
+    for (const t of db.types) {
+      if (t.essentials || !seed.types.some((s) => s.id === t.id)) continue;
+      t.questions = t.questions.filter((q) => !(t.id === 'paddleboard' && q.id === 'dog'));
+      t.items = t.items.filter((i) => !usesOld(i));
+      const s = seed.types.find((x) => x.id === t.id);
+      const iIds = new Set(t.items.map((i) => i.id));
+      s.items.filter((i) => i.who && i.who.includes('pet')).forEach((i) => { if (!iIds.has(i.id)) t.items.push(clone(i)); });
+    }
+    console.log('  Updated your trip types to use family profiles (medication, glasses, pets).');
   }
   db.seedVersion = SEED_VERSION;
   return true;
@@ -246,9 +271,12 @@ async function api(req, res, url) {
     db.members = body.members.slice(0, 30).map((p) => ({
       id: str(p.id || id(), 40),
       name: str(p.name, 40).trim() || 'Someone',
-      kind: ['adult', 'kid', 'baby'].includes(p.kind) ? p.kind : 'adult',
+      kind: ['adult', 'kid', 'baby', 'pet'].includes(p.kind) ? p.kind : 'adult',
+      species: p.kind === 'pet' && ['dog', 'cat', 'other'].includes(p.species) ? p.species : undefined,
       emoji: str(p.emoji || '🙂', 16),
       color: /^#[0-9a-f]{6}$/i.test(p.color) ? p.color : '#0ea5e9',
+      needs: Array.isArray(p.needs) ? p.needs.filter((n) => NEED_IDS.includes(n)) : [],
+      always: Array.isArray(p.always) ? p.always.map((a) => str(a, 80).trim()).filter(Boolean).slice(0, 40) : [],
     }));
     save();
     return send(res, 200, { members: db.members });

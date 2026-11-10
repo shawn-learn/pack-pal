@@ -20,6 +20,7 @@ const ADULT = ['adult'];
 const KIDS = ['kid'];
 const BABY = ['baby'];
 const BIG = ['adult', 'kid'];
+const PET = ['pet'];
 
 const core = {
   id: 'essentials',
@@ -30,19 +31,17 @@ const core = {
   essentials: true,
   questions: [
     multi('weather', 'What weather are you expecting?', { hot: '☀️ Hot', mild: '🌤️ Mild', cold: '🥶 Cold', rain: '🌧️ Rain', snow: '❄️ Snow' }, 'Pick all that apply.'),
-    yesno('laundry', 'Will you be able to do laundry?', 'If yes, clothing is capped so you don\'t overpack.'),
+    yesno('laundry', 'Do you plan to do laundry during the trip?', 'If yes, Pack Pal packs about 4 days of clothes and you wash the rest. If no, everyone gets enough for every day of the trip.'),
     forgot('pool', 'Is there a hot tub or pool where you\'re staying?'),
     forgot('dressy', 'Any dressy dinners, weddings or events?'),
     forgot('workout', 'Planning to work out or go for a run?'),
     forgot('flying', 'Are you flying?'),
     forgot('celebration', 'Any birthdays or celebrations during the trip?'),
-    forgot('eyes', 'Does anyone wear glasses or contacts?'),
     forgot('linens', 'Staying somewhere without towels or bedding (cabin, rental)?'),
     forgot('kitchen', 'Will you have a kitchen to cook in?'),
     forgot('sleep', 'Sharing rooms, or any light sleepers?'),
     forgot('work', 'Will anyone need to do some work?'),
     forgot('dark', 'Any early starts or evenings outside in the dark?'),
-    forgot('pet', 'Is a pet coming?'),
   ],
   items: [
     // Clothing
@@ -70,7 +69,15 @@ const core = {
     it('Sunscreen', 'toiletries', { when: { weather: ['hot', 'mild', 'snow'] } }),
     it('Lip balm', 'toiletries'),
     // Health
-    it('Prescription medications', 'health', { note: 'Pack enough for a couple of extra days.' }),
+    // From each person's profile (Family page)
+    it('Daily medication', 'health', each({ needs: ['meds'], note: 'Pack a couple of extra days\' worth.' })),
+    it('Allergy meds / EpiPen', 'health', each({ needs: ['allergy'], note: 'Two auto-injectors if prescribed.' })),
+    it('Inhaler', 'health', each({ needs: ['inhaler'] })),
+    it('Glasses & case', 'health', each({ needs: ['glasses', 'contacts'] })),
+    it('Contacts & solution', 'health', each({ needs: ['contacts'], note: 'Plus a spare pair.' })),
+    it('Retainer or mouthguard & case', 'health', each({ needs: ['retainer'] })),
+    it('CPAP machine, mask & cord', 'health', each({ needs: ['cpap'] })),
+    it('Hearing aids, charger or batteries', 'health', each({ needs: ['hearing'] })),
     it('Pain & fever reliever', 'health', { note: 'Include a kids\' version if needed.' }),
     it('Bandages', 'health'),
     it('Hand sanitizer', 'health'),
@@ -118,8 +125,6 @@ const core = {
     it('Birthday gift', 'misc', { when: { celebration: 'yes' } }),
     it('Card', 'misc', { when: { celebration: 'yes' } }),
     it('Candles & lighter', 'misc', { when: { celebration: 'yes' } }),
-    it('Glasses & case', 'health', { when: { eyes: 'yes' } }),
-    it('Contacts & solution', 'health', { when: { eyes: 'yes' }, note: 'Plus a spare pair.' }),
     it('Bath towels', 'misc', each({ when: { linens: 'yes' } })),
     it('Sheets & pillowcases', 'misc', { when: { linens: 'yes' } }),
     it('Toilet paper', 'misc', { when: { linens: 'yes' } }),
@@ -131,11 +136,18 @@ const core = {
     it('White noise app or machine', 'electronics', { when: { sleep: 'yes' } }),
     it('Laptop & charger', 'electronics', each({ who: ADULT, when: { work: 'yes' } })),
     it('Headlamp', 'gear', each({ who: BIG, when: { dark: 'yes' } })),
-    it('Pet food', 'misc', { qty: { base: 1, perDay: 1 }, when: { pet: 'yes' }, note: 'Servings.' }),
-    it('Leash, collar & ID tag', 'misc', { when: { pet: 'yes' } }),
-    it('Pet bowls', 'misc', { when: { pet: 'yes' } }),
-    it('Poop bags', 'misc', { when: { pet: 'yes' } }),
-    it('Pet bed or crate', 'misc', { when: { pet: 'yes' } }),
+    // Pets (added as family members on the Family page)
+    it('Pet food', 'misc', each({ who: PET, qty: { base: 1, perDay: 1 }, note: 'Meals, plus one spare.' })),
+    it('Treats', 'misc', each({ who: PET })),
+    it('Food & water bowls', 'misc', each({ who: PET })),
+    it('Collar & ID tag', 'misc', each({ who: PET })),
+    it('Leash', 'misc', each({ who: PET, needs: ['dog'] })),
+    it('Poop bags', 'misc', each({ who: PET, needs: ['dog'] })),
+    it('Litter box & litter', 'misc', each({ who: PET, needs: ['cat'] })),
+    it('Pet carrier', 'misc', each({ who: PET, needs: ['cat', 'other'] })),
+    it('Pet bed or crate', 'misc', each({ who: PET })),
+    it('Favorite toy', 'misc', each({ who: PET })),
+    it('Pet medication & vet records', 'documents', each({ who: PET })),
   ],
 };
 
@@ -380,7 +392,6 @@ const types = [
       it('Overnight bag', 'gear', { when: { stops: 'yes' }, note: 'One small bag with a night\'s worth of stuff so you don\'t unload the car at every stop.' }),
       it('Extra water & non-perishable food', 'food', { when: { remote: 'yes' } }),
       it('Paper map', 'gear', { when: { remote: 'yes' } }),
-      it('Vet records', 'documents', { when: { pet: 'yes' } }),
     ],
   },
   {
@@ -541,7 +552,6 @@ const extraTypes = [
       choice('water', 'Where are you paddling?', { lake: 'Lake or calm water', river: 'River', ocean: 'Ocean' }),
       yesno('cold', 'Is the water cold (below about 15°C / 60°F)?'),
       yesno('long', 'Paddling for more than 2 hours?'),
-      yesno('dog', 'Is a dog coming on the board?'),
     ],
     items: [
       it('Paddle boards', 'gear', { when: { board: ['inflatable', 'hard'] } }),
@@ -569,8 +579,7 @@ const extraTypes = [
       it('Headlamp or light', 'gear', { when: { long: 'yes' } }),
       it('Tide & weather check', 'documents', { when: { water: 'ocean' }, note: 'Paddle against the wind on the way out.' }),
       it('River map & take-out plan', 'documents', { when: { water: 'river' } }),
-      it('Dog PFD', 'misc', { when: { dog: 'yes' } }),
-      it('Dog water bowl', 'misc', { when: { dog: 'yes' } }),
+      it('Dog life jacket', 'misc', each({ who: PET, needs: ['dog'] })),
     ],
   },
   {
