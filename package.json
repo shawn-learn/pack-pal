@@ -1,0 +1,12 @@
+{
+  "name": "pack-pal",
+  "version": "1.0.0",
+  "description": "Family packing lists that remember your kinds of trips",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "engines": { "node": ">=18" }
+}
