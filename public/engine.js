@@ -53,6 +53,7 @@
   }
 
   const isPerson = (t) => t.kind !== 'pet';
+  const DERIVED_IDS = ['nights', 'days', 'travelers', 'kids', 'baby', 'pet'];
 
   // Things the family has told Pack Pal about a person or pet: needs like
   // "glasses" or "meds", and for pets their species ("dog", "cat").
@@ -89,9 +90,20 @@
     return want.some((w) => have.some((h) => String(h) === String(w)));
   }
 
-  function conditionsMet(when, answers) {
+  // `asked` (optional): the question ids this trip could have answered. A condition on a
+  // question that isn't asked any more (say it was deleted in the trip type editor) is
+  // ignored, so removing a question never hides the items that depended on it.
+  function conditionsMet(when, answers, asked) {
     if (!when) return true;
-    return Object.keys(when).every((q) => matchOne(when[q], answers[q]));
+    return Object.keys(when).every((q) => (asked && !asked.has(q)) || matchOne(when[q], answers[q]));
+  }
+
+  // Every question id a rule can depend on for this core + type: their questions plus the
+  // answers the engine works out itself (nights, kids, ...).
+  function askedQuestions(core, type) {
+    const ids = new Set(DERIVED_IDS);
+    [core, type].forEach((t) => ((t && t.questions) || []).forEach((q) => ids.add(q.id)));
+    return ids;
   }
 
   function quantity(rule, answers) {
@@ -124,9 +136,10 @@
     if (core && trip.includeEssentials !== false) (core.items || []).forEach((r) => add(r, core.id));
     (type.items || []).forEach((r) => add(r, type.id)); // trip-type rules override essentials with the same name
 
+    const asked = askedQuestions(core, type);
     const out = [];
     for (const rule of rules.values()) {
-      if (!conditionsMet(rule.when, answers)) continue;
+      if (!conditionsMet(rule.when, answers, asked)) continue;
       const qty = quantity(rule, answers);
       if (qty <= 0) continue;
       const base = {
@@ -167,7 +180,7 @@
     return { done, total: live.length, pct: live.length ? Math.round((done / live.length) * 100) : 0 };
   }
 
-  const api = { CATEGORIES, NEEDS, categoryOf, generate, isPerson, progress, nightsBetween, conditionsMet, quantity, slug, LAUNDRY_CAP };
+  const api = { CATEGORIES, NEEDS, categoryOf, generate, isPerson, progress, nightsBetween, conditionsMet, askedQuestions, quantity, slug, LAUNDRY_CAP };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.PackEngine = api;
 })(typeof window !== 'undefined' ? window : globalThis);
