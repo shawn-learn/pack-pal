@@ -43,7 +43,7 @@ function load() {
   if (!fs.existsSync(DATA_FILE)) {
     const db = freshDb();
     writeFile(db);
-    console.log('  Created a new data file with 13 trip types.');
+    console.log(`  Created a new data file with ${seed.types.length} trip types.`);
     return db;
   }
   const db = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
@@ -54,7 +54,7 @@ function load() {
 
 // Bring an existing data file up to date with new built-in questions,
 // without touching anything the family added or edited themselves.
-const SEED_VERSION = 3;
+const SEED_VERSION = 4;
 function migrate(db) {
   const from = db.seedVersion || 1;
   if (from >= SEED_VERSION) return false;
@@ -104,6 +104,13 @@ function migrate(db) {
       s.items.filter((i) => i.who && i.who.includes('pet')).forEach((i) => { if (!iIds.has(i.id)) t.items.push(clone(i)); });
     }
     console.log('  Updated your trip types to use family profiles (medication, glasses, pets).');
+  }
+  if (from < 4) {
+    // v4: ten more built-in trip types. Add the ones this data file doesn't have yet.
+    const have = new Set(db.types.map((t) => t.id));
+    const added = seed.types.filter((t) => seed.ADDED_V4.includes(t.id) && !have.has(t.id));
+    added.forEach((t) => db.types.push(clone(t)));
+    if (added.length) console.log(`  Added ${added.length} new trip types: ${added.map((t) => t.name).join(', ')}.`);
   }
   db.seedVersion = SEED_VERSION;
   return true;
