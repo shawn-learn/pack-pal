@@ -45,10 +45,35 @@
     return {
       nights: trip.nights,
       days: trip.nights + 1,
-      travelers: travelers.length,
+      travelers: travelers.filter(isPerson).length,
       kids: kinds.includes('kid') ? 'yes' : 'no',
       baby: kinds.includes('baby') ? 'yes' : 'no',
+      pet: kinds.includes('pet') ? 'yes' : 'no',
     };
+  }
+
+  const isPerson = (t) => t.kind !== 'pet';
+
+  // Things the family has told Pack Pal about a person or pet: needs like
+  // "glasses" or "meds", and for pets their species ("dog", "cat").
+  const NEEDS = [
+    { id: 'meds', label: 'Daily medication', icon: '💊' },
+    { id: 'glasses', label: 'Glasses', icon: '👓' },
+    { id: 'contacts', label: 'Contacts', icon: '👁️' },
+    { id: 'allergy', label: 'Allergy meds / EpiPen', icon: '🤧' },
+    { id: 'inhaler', label: 'Inhaler', icon: '🫁' },
+    { id: 'retainer', label: 'Retainer / mouthguard', icon: '🦷' },
+    { id: 'cpap', label: 'CPAP machine', icon: '😴' },
+    { id: 'hearing', label: 'Hearing aids', icon: '🦻' },
+  ];
+  const traits = (t) => [...(t.needs || []), t.species].filter(Boolean);
+
+  // Does this traveler get a per-person ("each") rule?
+  function appliesTo(rule, t) {
+    const who = rule.who && rule.who.length ? rule.who : null;
+    if (who ? !who.includes(t.kind) : !isPerson(t)) return false; // pets only get rules made for pets
+    if (rule.needs && rule.needs.length && !rule.needs.some((n) => traits(t).includes(n))) return false;
+    return true;
   }
 
   function matchOne(expected, actual) {
@@ -104,7 +129,6 @@
       if (!conditionsMet(rule.when, answers)) continue;
       const qty = quantity(rule, answers);
       if (qty <= 0) continue;
-      const who = rule.who && rule.who.length ? rule.who : null;
       const base = {
         name: rule.name,
         category: rule.category || 'misc',
@@ -115,12 +139,23 @@
       };
       if (rule.scope === 'each') {
         for (const t of travelers) {
-          if (who && !who.includes(t.kind)) continue;
+          if (!appliesTo(rule, t)) continue;
           out.push(Object.assign({}, base, { id: slug(rule.name) + '--' + t.id, owner: t.id, qty }));
         }
       } else {
-        if (who && !travelers.some((t) => who.includes(t.kind))) continue;
+        // A shared item is packed once if anyone it's meant for is coming.
+        const for_ = rule.who && rule.who.length ? travelers.filter((t) => rule.who.includes(t.kind)) : travelers;
+        if (!for_.length) continue;
+        if (rule.needs && rule.needs.length && !for_.some((t) => rule.needs.some((n) => traits(t).includes(n)))) continue;
         out.push(Object.assign({}, base, { id: slug(rule.name), owner: null, qty }));
+      }
+    }
+    // "Always bring" items the family added to someone's profile.
+    for (const t of travelers) {
+      for (const name of t.always || []) {
+        if (!String(name).trim()) continue;
+        if (out.some((i) => i.owner === t.id && slug(i.name) === slug(name))) continue;
+        out.push({ id: 'always-' + slug(name) + '--' + t.id, name: String(name).trim(), category: 'misc', note: 'Always packed for ' + t.name, rule: 'always-' + slug(name), from: 'profile', owner: t.id, qty: 1, checked: false });
       }
     }
     return out;
@@ -132,7 +167,7 @@
     return { done, total: live.length, pct: live.length ? Math.round((done / live.length) * 100) : 0 };
   }
 
-  const api = { CATEGORIES, categoryOf, generate, progress, nightsBetween, conditionsMet, quantity, slug, LAUNDRY_CAP };
+  const api = { CATEGORIES, NEEDS, categoryOf, generate, isPerson, progress, nightsBetween, conditionsMet, quantity, slug, LAUNDRY_CAP };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.PackEngine = api;
 })(typeof window !== 'undefined' ? window : globalThis);

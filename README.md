@@ -16,13 +16,15 @@ The startup window also prints an **"On your Wi-Fi"** address such as `http://19
 
 ## First run
 
-1. Go to **Family** and add everyone: adults, kids and babies. Kids get kid things, and babies get diapers, wipes and sleepers.
+1. Go to **Family** and add everyone: adults, kids, babies and pets. Kids get kid things, and babies get diapers, wipes and sleepers. Tick each person's medication, glasses and other must-brings.
 2. On each device, set **"Who uses this device?"** so the list shows who packed what.
 3. Click **✨ Plan a trip**.
 
 ## What's inside
 
 - **13 trip types:** ski, rock climbing, paddle boarding, hiking, mountain biking, camping, beach, road trip, visiting family, international, city break, business and cruise. Each one has its own questions, plus two shared ones about weather and laundry. The rock climbing and hiking lists draw on the MEC checklists.
+- **Family profiles:** tell Pack Pal once who takes daily medication, wears glasses or contacts, or needs an inhaler, EpiPen, retainer, CPAP or hearing aids, plus anything that must always come (a blankie, a night-light). It adds those to that person's list on every trip. Pets are family members too, with their own food, bowls, leash or litter box, and they only come when you pick them.
+- **Trip length and laundry:** the first step asks for the dates (or a number of nights) and whether you plan to do laundry, then tells you how many days of clothes everyone will pack.
 - **Easy-to-forget check:** every trip ends with one quick screen of yes/no questions about the things people most often leave behind, such as "Is there a hot tub or pool where you're staying?", "Does anyone wear glasses or contacts?" and "Any birthdays during the trip?". You can add your own under **Trip types → Everyday essentials** by ticking "Part of the easy-to-forget check".
 - **Smart quantities:** clothing scales with the number of days, gets capped when you'll have laundry, and is counted per person.
 - **Remembers your answers:** the next trip of the same type starts with last time's answers already filled in.

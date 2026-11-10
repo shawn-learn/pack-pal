@@ -63,11 +63,47 @@ test('trip type item overrides essentials with the same name', () => {
 test('easy-to-forget answers add the right items on any trip', () => {
   const without = gen('ski', { weather: ['snow'] });
   assert.ok(!find(without, 'Swimsuit'));
-  const withPool = gen('ski', { weather: ['snow'], pool: 'yes', eyes: 'yes', flying: 'yes' });
+  const withPool = gen('ski', { weather: ['snow'], pool: 'yes', flying: 'yes' });
   assert.ok(find(withPool, 'Swimsuit', 'kid'));
-  assert.ok(find(withPool, 'Contacts & solution'));
   assert.ok(find(withPool, 'Boarding passes'));
   assert.ok(find(withPool, 'Gum or lollipops for ear pressure'));
+});
+
+test('family profiles add each person\'s own things', () => {
+  const people = [
+    { id: 'dad', name: 'Dad', kind: 'adult', needs: ['meds', 'glasses'] },
+    { id: 'kid', name: 'Kid', kind: 'kid', needs: ['contacts'], always: ['Blue blankie'] },
+  ];
+  const list = gen('beach', {}, 3, people);
+  assert.ok(find(list, 'Daily medication', 'dad'));
+  assert.ok(!find(list, 'Daily medication', 'kid'));
+  assert.ok(find(list, 'Glasses & case', 'dad'));
+  assert.ok(find(list, 'Glasses & case', 'kid'), 'contact wearers bring backup glasses');
+  assert.ok(find(list, 'Contacts & solution', 'kid'));
+  assert.ok(!find(list, 'Contacts & solution', 'dad'));
+  assert.ok(find(list, 'Blue blankie', 'kid'));
+});
+
+test('pets get their own list and never get people things', () => {
+  const dog = { id: 'rex', name: 'Rex', kind: 'pet', species: 'dog' };
+  const cat = { id: 'tom', name: 'Tom', kind: 'pet', species: 'cat' };
+  const list = gen('camping', { shelter: 'tent' }, 2, [...fam, dog, cat]);
+  assert.equal(find(list, 'Pet food', 'rex').qty, 4);
+  assert.ok(find(list, 'Leash', 'rex'));
+  assert.ok(!find(list, 'Leash', 'tom'));
+  assert.ok(find(list, 'Litter box & litter', 'tom'));
+  assert.ok(!find(list, 'Sleeping bag', 'rex'));
+  assert.ok(!find(list, 'Toothbrush', 'rex'));
+  assert.ok(!find(gen('camping', { shelter: 'tent' }), 'Pet food'));
+});
+
+test('trip length and laundry set clothing amounts', () => {
+  const short = gen('hiking', { laundry: 'no' }, 2);
+  const long = gen('hiking', { laundry: 'no' }, 10);
+  const longWash = gen('hiking', { laundry: 'yes' }, 10);
+  assert.equal(find(short, 'Underwear', 'dad').qty, 4);
+  assert.equal(find(long, 'Underwear', 'dad').qty, 12);
+  assert.equal(find(longWash, 'Underwear', 'dad').qty, 5);
 });
 
 test('easy-to-forget questions are not duplicated by any trip type', () => {

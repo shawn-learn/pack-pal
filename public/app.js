@@ -266,6 +266,12 @@
   let pendingType = null;
   let wiz = null;
 
+  function lastTravelersFor(typeId) {
+    const prev = S.trips.find((t) => t.typeId === typeId);
+    const ids = prev ? prev.travelers.filter((id) => member(id)) : [];
+    return ids.length ? ids : S.members.filter(E.isPerson).map((m) => m.id);
+  }
+
   function lastAnswersFor(typeId) {
     const prev = S.trips.find((t) => t.typeId === typeId);
     return prev ? clone(prev.answers) : null;
@@ -278,7 +284,7 @@
       step: 'details', typeId,
       name: type.name + (type.name.toLowerCase().includes('trip') ? '' : ' trip'),
       start, end: addDays(start, 2), nights: 2, useDates: true,
-      travelers: S.members.map((m) => m.id),
+      travelers: lastTravelersFor(typeId),
       answers: Object.assign({}, core() ? defaultsFor(core()) : {}, type.defaults || {}, lastAnswersFor(typeId) || {}),
       remembered: !!lastAnswersFor(typeId),
       includeEssentials: true,
@@ -292,7 +298,7 @@
     const qs = [];
     if (wiz.includeEssentials && core()) qs.push(...core().questions);
     qs.push(...(type.questions || []));
-    return qs;
+    return qs.filter((q) => q.id !== 'laundry'); // asked next to the trip length
   }
 
   // One page per question, except the quick "easy to forget" checks, which share a final page.
@@ -363,8 +369,8 @@
       <div class="stack" style="margin-top:24px">
         <label class="field"><span>Trip name</span><input class="input" id="w-name" value="${esc(wiz.name)}" maxlength="80"></label>
         <div class="card stack">
-          <div class="spread"><b>When?</b>
-            <label class="check small"><input type="checkbox" id="w-nodates" ${wiz.useDates ? '' : 'checked'}> No dates yet</label></div>
+          <div class="spread"><b>How long is the trip?</b>
+            <label class="check small"><input type="checkbox" id="w-nodates" ${wiz.useDates ? '' : 'checked'}> No dates yet, just count nights</label></div>
           <div id="w-dates" class="editor-grid ${wiz.useDates ? '' : 'hidden'}">
             <label class="field"><span>Leaving</span><input class="input" type="date" id="w-start" value="${esc(wiz.start || '')}"></label>
             <label class="field"><span>Coming home</span><input class="input" type="date" id="w-end" value="${esc(wiz.end || '')}"></label>
@@ -374,7 +380,14 @@
             <span class="nights-badge" id="w-n"></span>
             <button class="icon-btn" id="w-plus" aria-label="More nights" style="border:1px solid var(--line)">＋</button>
           </div>
-          <p class="muted small" id="w-sum"></p>
+          <div class="spread" style="border-top:1px solid var(--line);padding-top:14px">
+            <b>Do you plan to do laundry during the trip?</b>
+            <div class="seg" id="w-laundry">
+              <button data-v="yes" class="${wiz.answers.laundry === 'yes' ? 'on' : ''}">🧺 Yes</button>
+              <button data-v="no" class="${wiz.answers.laundry === 'no' ? 'on' : ''}">No</button>
+            </div>
+          </div>
+          <p class="small" id="w-sum" style="color:var(--brand);font-weight:600"></p>
         </div>
         <div class="card stack">
           <div class="spread"><b>Who's coming?</b><button class="btn small ghost" id="w-addp">＋ Add someone</button></div>
@@ -382,6 +395,7 @@
             ${people.length ? people.map((m) => `<button class="person ${wiz.travelers.includes(m.id) ? 'on' : ''}" data-id="${m.id}">${avatar(m)}${esc(m.name)}</button>`).join('')
               : '<p class="muted small">Add the people going so everyone gets their own list.</p>'}
           </div>
+          <p class="muted small" id="w-profile"></p>
         </div>
         <label class="check"><input type="checkbox" id="w-ess" ${wiz.includeEssentials ? 'checked' : ''}> Include everyday essentials (toothbrush, chargers, clothes...)</label>
       </div>
@@ -393,10 +407,29 @@
     const sync = () => {
       if (wiz.useDates) wiz.nights = E.nightsBetween(wiz.start, wiz.end) ?? wiz.nights;
       $('#w-n').textContent = plural(wiz.nights, 'night');
-      $('#w-sum').textContent = wiz.useDates && wiz.start
-        ? `${fmtDate(wiz.start, { weekday: 'long', month: 'long', day: 'numeric' })} · ${plural(wiz.nights, 'night')}`
-        : '';
+      const days = wiz.nights + 1;
+      const when = wiz.useDates && wiz.start ? fmtDate(wiz.start, { weekday: 'long', month: 'long', day: 'numeric' }) + ' · ' : '';
+      const wash = wiz.answers.laundry === 'yes' && days > E.LAUNDRY_CAP;
+      $('#w-sum').textContent = `${when}${plural(wiz.nights, 'night')}, ${plural(days, 'day')}. ` + (wiz.answers.laundry === undefined
+        ? 'Tell me about laundry and I\'ll size the clothes.'
+        : wash ? `Everyone packs about ${E.LAUNDRY_CAP} days of clothes and washes the rest.` : `Everyone packs clothes for all ${days} days, plus a spare.`);
     };
+    const profileHint = () => {
+      const notes = wiz.travelers.map(member).filter(Boolean).flatMap((m) => {
+        const needs = (m.needs || []).map((n) => E.NEEDS.find((x) => x.id === n)).filter(Boolean).map((n) => n.label.toLowerCase());
+        const all = [...needs, ...(m.always || [])];
+        return all.length ? [`${m.name}'s ${all.slice(0, 3).join(', ')}${all.length > 3 ? '…' : ''}`] : [];
+      });
+      $('#w-profile').innerHTML = notes.length
+        ? `🧠 Remembered from Family: ${esc(notes.join('; '))}.`
+        : S.members.length ? '💡 Add medication, glasses and must-brings to each person on the <a href="#/family">Family</a> page and they\'ll be on every list.' : '';
+    };
+    profileHint();
+    $$('#w-laundry button').forEach((b) => (b.onclick = () => {
+      wiz.answers.laundry = b.dataset.v;
+      $$('#w-laundry button').forEach((x) => x.classList.toggle('on', x === b));
+      sync();
+    }));
     sync();
     $('#w-name').oninput = (e) => (wiz.name = e.target.value);
     $('#w-start').onchange = (e) => {
@@ -418,6 +451,7 @@
       const id = b.dataset.id;
       wiz.travelers = wiz.travelers.includes(id) ? wiz.travelers.filter((x) => x !== id) : [...wiz.travelers, id];
       b.classList.toggle('on');
+      profileHint();
     }));
     $('#w-addp').onclick = () => memberModal(null, (m) => { wiz.travelers.push(m.id); wizDetails(); });
     $('#w-ess').onchange = (e) => (wiz.includeEssentials = e.target.checked);
@@ -427,7 +461,7 @@
     };
     $('#w-next').onclick = () => {
       if (wiz.useDates && (!wiz.start || !wiz.end || wiz.end < wiz.start)) return toast('Pick a leaving and coming-home date');
-      if (!wiz.travelers.length) return toast(S.members.length ? 'Pick at least one person' : 'Add at least one person first');
+      if (!wiz.travelers.map(member).filter(Boolean).some(E.isPerson)) return toast(S.members.length ? 'Pick at least one person' : 'Add at least one person first');
       if (!wiz.useDates) { wiz.start = ''; wiz.end = ''; }
       wiz.step = 'q'; wiz.qIndex = 0; renderWizard();
     };
@@ -601,7 +635,7 @@
           <label class="small muted row" style="gap:6px">I'm
             <select class="input sm" id="t-me" style="width:auto">
               <option value="">someone</option>
-              ${S.members.map((m) => `<option value="${m.id}" ${prefs.me === m.id ? 'selected' : ''}>${esc(m.emoji + ' ' + m.name)}</option>`).join('')}
+              ${S.members.filter(E.isPerson).map((m) => `<option value="${m.id}" ${prefs.me === m.id ? 'selected' : ''}>${esc(m.emoji + ' ' + m.name)}</option>`).join('')}
             </select></label>
         </div>
         ${travelers.length > 1 ? `<div class="tabs" id="t-tabs" style="margin-top:14px"></div>` : ''}
@@ -837,6 +871,7 @@
           ${E.CATEGORIES.map((c) => `<option value="${c.id}" ${c.id === i.category ? 'selected' : ''}>${c.icon} ${esc(c.label)}</option>`).join('')}</select></label>
         <label class="field"><span>Note</span><input class="input" id="i-note" value="${esc(i.note)}" maxlength="300" placeholder="e.g. the blue one"></label>
         ${i.custom && type ? `<button class="btn small ghost" id="i-remember" style="align-self:flex-start">🧠 Always pack this for ${esc(type.name)} trips</button>` : ''}
+        ${i.custom && i.owner && member(i.owner) ? `<button class="btn small ghost" id="i-remember-p" style="align-self:flex-start">🧠 Always pack this for ${esc(member(i.owner).name)}, on every trip</button>` : ''}
       </div>
       <div class="modal-actions" style="justify-content:space-between">
         <div class="row"><button class="btn danger ghost" id="i-del">Delete</button>
@@ -861,6 +896,14 @@
         await tripOps(tripId, [{ op: 'remove', itemId }]);
         current.refresh && current.refresh();
         toast(`Removed ${copy.name}`, { label: 'Undo', run: async () => { await tripOps(tripId, [{ op: 'add', item: copy }]); current.refresh && current.refresh(); } });
+      };
+      const remP = $('#i-remember-p', m);
+      if (remP) remP.onclick = async () => {
+        close();
+        const who = member(i.owner);
+        if ((who.always || []).some((a) => E.slug(a) === E.slug(i.name))) return toast(`${i.name} is already on ${who.name}'s list`);
+        const next = S.members.map((x) => (x.id === who.id ? Object.assign({}, x, { always: [...(x.always || []), i.name] }) : x));
+        try { S.members = (await api('PUT', 'members', { members: next })).members; toast(`🧠 Got it. ${i.name} will be packed for ${who.name} on every trip.`); } catch (e) { fail(e); }
       };
       const rem = $('#i-remember', m);
       if (rem) rem.onclick = () => { close(); rememberItem(type.id, { name: i.name, category: i.category, owner: i.owner }); };
@@ -940,7 +983,7 @@
     const essentials = core();
     // One row per rule (not per person).
     const seen = new Map();
-    trip.items.filter((i) => !i.custom && i.rule).forEach((i) => { if (!seen.has(i.from + ':' + i.rule)) seen.set(i.from + ':' + i.rule, i); });
+    trip.items.filter((i) => !i.custom && i.rule && i.from !== 'profile').forEach((i) => { if (!seen.has(i.from + ':' + i.rule)) seen.set(i.from + ':' + i.rule, i); });
     const ruleItems = [...seen.values()].sort((a, b) => a.name.localeCompare(b.name));
     const customs = [];
     const cseen = new Set();
@@ -1142,7 +1185,8 @@
     function ruleTags(r) {
       const tags = [];
       tags.push(r.scope === 'each' ? '👤 each person' : '🧺 shared');
-      if (r.who && r.who.length) tags.push(r.who.map((w) => ({ adult: 'adults', kid: 'kids', baby: 'babies' }[w])).join(' & '));
+      if (r.who && r.who.length) tags.push(r.who.map((w) => ({ adult: 'adults', kid: 'kids', baby: 'babies', pet: 'pets' }[w])).join(' & '));
+      if (r.needs && r.needs.length) tags.push('🧠 from family profile');
       const q = r.qty || {};
       if (q.perDay || q.perNight) tags.push('scales with nights');
       else if ((q.base || 1) > 1) tags.push('×' + q.base);
@@ -1187,8 +1231,11 @@
         <div class="row">
           <div class="seg r-scope"><button data-s="each" class="${r.scope === 'each' ? 'on' : ''}">👤 One for each person</button><button data-s="shared" class="${r.scope !== 'each' ? 'on' : ''}">🧺 Shared</button></div>
           <span class="small muted">${r.scope === 'each' ? 'for' : 'only if coming:'}</span>
-          ${['adult', 'kid', 'baby'].map((w) => `<span class="chip toggle r-who ${(r.who || []).includes(w) ? 'on' : ''}" data-w="${w}">${{ adult: '🧑 Adults', kid: '🧒 Kids', baby: '👶 Babies' }[w]}</span>`).join('')}
-          <span class="faint small">${!(r.who || []).length ? '(none picked = everyone)' : ''}</span>
+          ${['adult', 'kid', 'baby', 'pet'].map((w) => `<span class="chip toggle r-who ${(r.who || []).includes(w) ? 'on' : ''}" data-w="${w}">${{ adult: '🧑 Adults', kid: '🧒 Kids', baby: '👶 Babies', pet: '🐾 Pets' }[w]}</span>`).join('')}
+          <span class="faint small">${!(r.who || []).length ? '(none picked = all people)' : ''}</span>
+        </div>
+        <div class="row" style="gap:6px"><span class="small muted">Only for those who have:</span>
+          ${[...E.NEEDS, { id: 'dog', icon: '🐶', label: 'Dogs' }, { id: 'cat', icon: '🐱', label: 'Cats' }].map((n) => `<span class="chip toggle r-need ${(r.needs || []).includes(n.id) ? 'on' : ''}" data-n="${n.id}">${n.icon} ${esc(n.label)}</span>`).join('')}
         </div>
         <div><div class="small muted" style="margin-bottom:6px;font-weight:600">How many${r.scope === 'each' ? ' (per person)' : ''}</div>
           <div class="qty-row">
@@ -1221,6 +1268,12 @@
       $('.r-cat', el).onchange = (e) => { r.category = e.target.value; redraw(); };
       $('.r-note', el).oninput = (e) => { r.note = e.target.value; markDirty(); };
       $$('.r-scope button', el).forEach((b) => (b.onclick = () => { r.scope = b.dataset.s; redraw(); }));
+      $$('.r-need', el).forEach((b) => (b.onclick = () => {
+        const n = b.dataset.n; r.needs = r.needs || [];
+        r.needs = r.needs.includes(n) ? r.needs.filter((x) => x !== n) : [...r.needs, n];
+        if (!r.needs.length) delete r.needs;
+        redraw();
+      }));
       $$('.r-who', el).forEach((b) => (b.onclick = () => {
         const w = b.dataset.w; r.who = r.who || [];
         r.who = r.who.includes(w) ? r.who.filter((x) => x !== w) : [...r.who, w];
@@ -1321,22 +1374,68 @@
   const PEOPLE_EMOJI = ['🧔', '👩', '👨', '🧑', '👧', '👦', '👶', '👵', '👴', '🧒', '🐶', '🐱', '🦊', '🐻', '🐼', '🦄', '🐸', '🐧', '🦖', '🌟'];
   const PEOPLE_COLORS = ['#0ea5e9', '#f97316', '#22c55e', '#a855f7', '#ec4899', '#eab308', '#14b8a6', '#ef4444'];
 
-  function memberModal(m, onSaved) {
-    const draft = m ? clone(m) : { id: uid(), name: '', kind: 'adult', emoji: PEOPLE_EMOJI[S.members.length % PEOPLE_EMOJI.length], color: PEOPLE_COLORS[S.members.length % PEOPLE_COLORS.length] };
-    modal(`<h2>${m ? 'Edit' : 'Add'} family member</h2><div class="stack">
+  const PET_EMOJI = ['🐶', '🐕', '🐩', '🐱', '🐈', '🐰', '🐹', '🐦', '🐢', '🐴'];
+  const SPECIES = [['dog', '🐶 Dog'], ['cat', '🐱 Cat'], ['other', '🐾 Other']];
+
+  function memberModal(m, onSaved, kindHint) {
+    const isNewPet = !m && kindHint === 'pet';
+    const draft = m ? clone(m) : {
+      id: uid(), name: '', kind: isNewPet ? 'pet' : 'adult', species: isNewPet ? 'dog' : undefined,
+      emoji: isNewPet ? '🐶' : PEOPLE_EMOJI[S.members.length % PEOPLE_EMOJI.length],
+      color: PEOPLE_COLORS[S.members.length % PEOPLE_COLORS.length], needs: [], always: [],
+    };
+    draft.needs = draft.needs || [];
+    draft.always = draft.always || [];
+    const pet = () => draft.kind === 'pet';
+    modal(`<h2 id="m-title"></h2><div class="stack">
       <label class="field"><span>Name</span><input class="input" id="m-name" value="${esc(draft.name)}" maxlength="40" placeholder="e.g. Sam"></label>
-      <div class="field"><span>Who are they?</span><div class="seg" id="m-kind">
-        ${[['adult', '🧑 Adult'], ['kid', '🧒 Kid'], ['baby', '👶 Baby']].map(([v, l]) => `<button data-k="${v}" class="${draft.kind === v ? 'on' : ''}">${l}</button>`).join('')}</div>
-        <span class="faint small" style="font-weight:400">Kids get kid things (comfort toys, snacks). Babies get diapers, wipes and sleepers.</span></div>
-      <div class="field"><span>Avatar</span><div class="emoji-picks" id="m-emoji">${PEOPLE_EMOJI.map((e) => `<button data-e="${e}" class="${draft.emoji === e ? 'on' : ''}">${e}</button>`).join('')}</div></div>
+      <div class="field"><span>Who are they?</span><div class="seg" id="m-kind" style="flex-wrap:wrap">
+        ${[['adult', '🧑 Adult'], ['kid', '🧒 Kid'], ['baby', '👶 Baby'], ['pet', '🐾 Pet']].map(([v, l]) => `<button data-k="${v}" class="${draft.kind === v ? 'on' : ''}">${l}</button>`).join('')}</div>
+        <span class="faint small" style="font-weight:400" id="m-kindhelp"></span></div>
+      <div class="field" id="m-species-f"><span>What kind of pet?</span><div class="seg" id="m-species">
+        ${SPECIES.map(([v, l]) => `<button data-s="${v}" class="${draft.species === v ? 'on' : ''}">${l}</button>`).join('')}</div></div>
+      <div class="field" id="m-needs-f"><span>Remember for them on every trip</span><div class="row" id="m-needs" style="gap:6px">
+        ${E.NEEDS.map((n) => `<span class="chip toggle ${draft.needs.includes(n.id) ? 'on' : ''}" data-n="${n.id}">${n.icon} ${esc(n.label)}</span>`).join('')}</div></div>
+      <label class="field"><span id="m-always-l"></span>
+        <textarea class="input" id="m-always" placeholder="One per line, e.g.&#10;Blue blankie&#10;Night-light&#10;Favorite pillow" style="min-height:80px">${esc(draft.always.join('\n'))}</textarea></label>
+      <div class="field"><span>Avatar</span><div class="emoji-picks" id="m-emoji"></div></div>
       <div class="field"><span>Color</span><div class="swatches" id="m-color">${PEOPLE_COLORS.map((c) => `<button class="swatch ${draft.color === c ? 'on' : ''}" data-c="${c}" style="background:${c}"></button>`).join('')}</div></div>
       </div><div class="modal-actions"><button class="btn" data-close>Cancel</button><button class="btn primary" id="m-save">Save</button></div>`, (el, close) => {
-      $$('#m-kind button', el).forEach((b) => (b.onclick = () => { draft.kind = b.dataset.k; $$('#m-kind button', el).forEach((x) => x.classList.toggle('on', x === b)); }));
-      $$('#m-emoji button', el).forEach((b) => (b.onclick = () => { draft.emoji = b.dataset.e; $$('#m-emoji button', el).forEach((x) => x.classList.toggle('on', x === b)); }));
+      const sync = () => {
+        $('#m-title', el).textContent = `${m ? 'Edit' : 'Add'} ${pet() ? 'pet' : 'family member'}`;
+        $('#m-kindhelp', el).textContent = {
+          adult: 'Adults get the grown-up things (ID, wallet, phone).', kid: 'Kids get kid things (comfort toys, snacks, activities).',
+          baby: 'Babies get diapers, wipes, sleepers and bottles.', pet: 'Pets get food, bowls and bedding, and only come when you pick them.',
+        }[draft.kind];
+        $('#m-species-f', el).classList.toggle('hidden', !pet());
+        $('#m-needs-f', el).classList.toggle('hidden', pet());
+        $('#m-always-l', el).textContent = 'Always pack for ' + ($('#m-name', el).value.trim() || (pet() ? 'this pet' : 'this person'));
+        const picks = pet() ? PET_EMOJI : PEOPLE_EMOJI.filter((e) => !PET_EMOJI.includes(e));
+        $('#m-emoji', el).innerHTML = picks.map((e) => `<button data-e="${e}" class="${draft.emoji === e ? 'on' : ''}">${e}</button>`).join('');
+        $$('#m-emoji button', el).forEach((b) => (b.onclick = () => { draft.emoji = b.dataset.e; sync(); }));
+      };
+      sync();
+      $('#m-name', el).addEventListener('input', sync);
+      $$('#m-kind button', el).forEach((b) => (b.onclick = () => {
+        const wasPet = pet();
+        draft.kind = b.dataset.k;
+        if (pet() && !draft.species) draft.species = 'dog';
+        if (pet() !== wasPet) draft.emoji = pet() ? '🐶' : PEOPLE_EMOJI[0];
+        $$('#m-kind button', el).forEach((x) => x.classList.toggle('on', x === b));
+        sync();
+      }));
+      $$('#m-species button', el).forEach((b) => (b.onclick = () => { draft.species = b.dataset.s; $$('#m-species button', el).forEach((x) => x.classList.toggle('on', x === b)); }));
+      $$('#m-needs .chip', el).forEach((c) => (c.onclick = () => {
+        const n = c.dataset.n;
+        draft.needs = draft.needs.includes(n) ? draft.needs.filter((x) => x !== n) : [...draft.needs, n];
+        c.classList.toggle('on');
+      }));
       $$('#m-color button', el).forEach((b) => (b.onclick = () => { draft.color = b.dataset.c; $$('#m-color button', el).forEach((x) => x.classList.toggle('on', x === b)); }));
       const save = async () => {
         draft.name = $('#m-name', el).value.trim();
         if (!draft.name) return toast('Add a name');
+        draft.always = $('#m-always', el).value.split('\n').map((s) => s.trim()).filter(Boolean);
+        if (pet()) draft.needs = []; else delete draft.species;
         const next = m ? S.members.map((x) => (x.id === m.id ? draft : x)) : [...S.members, draft];
         try {
           const res = await api('PUT', 'members', { members: next });
@@ -1351,13 +1450,19 @@
   }
 
   function viewFamily() {
-    const kindLabel = { adult: 'Adult', kid: 'Kid', baby: 'Baby' };
+    const kindLabel = { adult: 'Adult', kid: 'Kid', baby: 'Baby', pet: 'Pet' };
+    const speciesLabel = { dog: 'Dog', cat: 'Cat', other: 'Pet' };
+    const details = (m) => {
+      const bits = (m.needs || []).map((n) => E.NEEDS.find((x) => x.id === n)).filter(Boolean).map((n) => `<span class="chip" title="${esc(n.label)}">${n.icon} ${esc(n.label)}</span>`);
+      if ((m.always || []).length) bits.push(`<span class="chip" title="${esc(m.always.join(', '))}">🧸 ${plural(m.always.length, 'must-bring')}</span>`);
+      return bits.length ? `<div class="row" style="gap:6px;margin-top:8px">${bits.join('')}</div>` : (m.kind === 'pet' ? '' : '<p class="faint small" style="margin-top:6px">Tap ✏️ to add medication, glasses or must-brings.</p>');
+    };
     app.innerHTML = `
-      <div class="spread"><div><h1>Family</h1><p class="muted" style="margin-top:6px">Everyone who might come along. Each person gets their own part of the list.</p></div>
-        <button class="btn primary" id="f-add">＋ Add person</button></div>
+      <div class="spread"><div><h1>Family</h1><p class="muted" style="margin-top:6px">Everyone who might come along. Tell Pack Pal once about medication, glasses and must-brings, and it remembers on every trip.</p></div>
+        <div class="row"><button class="btn" id="f-pet">🐾 Add pet</button><button class="btn primary" id="f-add">＋ Add person</button></div></div>
       <div class="grid cards" style="margin-top:24px">
-        ${S.members.map((m) => `<div class="card row" style="flex-wrap:nowrap">${avatar(m, 52)}
-          <div style="flex:1;min-width:0"><h3>${esc(m.name)}</h3><p class="muted small">${kindLabel[m.kind]}${prefs.me === m.id ? ' · this device' : ''}</p></div>
+        ${S.members.map((m) => `<div class="card" style="display:flex;gap:12px;align-items:flex-start">${avatar(m, 52)}
+          <div style="flex:1;min-width:0"><h3>${esc(m.name)}</h3><p class="muted small">${m.kind === 'pet' ? speciesLabel[m.species] || 'Pet' : kindLabel[m.kind]}${prefs.me === m.id ? ' · this device' : ''}</p>${details(m)}</div>
           <button class="icon-btn" data-edit="${m.id}" title="Edit">✏️</button><button class="icon-btn" data-del="${m.id}" title="Remove">✕</button></div>`).join('')}
         ${S.members.length ? '' : '<div class="card empty" style="grid-column:1/-1"><div class="big-emoji">👨‍👩‍👧‍👦</div><h3>No one here yet</h3><p class="muted small">Add yourself first, then the rest of the crew.</p></div>'}
       </div>
@@ -1367,7 +1472,7 @@
         <span style="font-size:1.6rem">📱</span>
         <div style="flex:1"><b>Who uses this device?</b><p class="muted small">So the list can show who packed what.</p></div>
         <select class="input" id="f-me" style="width:auto"><option value="">Not set</option>
-          ${S.members.map((m) => `<option value="${m.id}" ${prefs.me === m.id ? 'selected' : ''}>${esc(m.emoji + ' ' + m.name)}</option>`).join('')}</select>
+          ${S.members.filter(E.isPerson).map((m) => `<option value="${m.id}" ${prefs.me === m.id ? 'selected' : ''}>${esc(m.emoji + ' ' + m.name)}</option>`).join('')}</select>
       </div>
 
       <div class="section-title"><h2>Settings</h2></div>
@@ -1380,6 +1485,7 @@
         <div class="card stack"><div style="font-size:1.6rem">📲</div><h3>Put it on your phone</h3>
           <p class="muted small">Open this page on your phone, then use "Add to Home Screen" (Safari share menu, or the Chrome ⋮ menu). It opens like an app.</p></div>
       </div>`;
+    $('#f-pet').onclick = () => memberModal(null, viewFamily, 'pet');
     $('#f-add').onclick = () => memberModal(null, () => { if (!prefs.me && S.members.length === 1) { prefs.me = S.members[0].id; savePrefs(); } viewFamily(); });
     $$('[data-edit]').forEach((b) => (b.onclick = () => memberModal(member(b.dataset.edit), viewFamily)));
     $$('[data-del]').forEach((b) => (b.onclick = async () => {
