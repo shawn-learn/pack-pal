@@ -428,13 +428,31 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+// stop.bat asks the server to stop by creating run/stop (see scripts/pack-pal-ctl.js).
+const RUN_DIR = path.join(__dirname, 'run');
+const PID_FILE = path.join(RUN_DIR, 'pack-pal.pid');
+const STOP_FILE = path.join(RUN_DIR, 'stop');
+
 function flushAndExit() {
   clearTimeout(saveTimer);
   try { writeFile(db); } catch (e) { console.error(e); }
+  try { if (fs.readFileSync(PID_FILE, 'utf8').trim() === String(process.pid)) fs.unlinkSync(PID_FILE); } catch {}
+  try { fs.unlinkSync(STOP_FILE); } catch {}
+  console.log('  Pack Pal stopped.');
   process.exit(0);
 }
 process.on('SIGINT', flushAndExit);
 process.on('SIGTERM', flushAndExit);
+process.on('SIGHUP', flushAndExit);
+
+server.on('error', (e) => {
+  if (e.code === 'EADDRINUSE') {
+    console.error(`\n  Port ${PORT} is already in use. Pack Pal may already be running in another window;`);
+    console.error('  close that window (or run stop.bat), then try again.\n');
+    process.exit(1);
+  }
+  throw e;
+});
 
 server.listen(PORT, HOST, () => {
   const lan = Object.values(os.networkInterfaces()).flat()
@@ -444,7 +462,14 @@ server.listen(PORT, HOST, () => {
   lan.forEach((ip) => console.log(`     On your Wi-Fi:     http://${ip}:${PORT}`));
   console.log(`\n     Data file: ${DATA_FILE}`);
   console.log(PASSWORD ? '     Password: ON' : '     Password: off (set PACK_PASSWORD to turn it on before exposing this to the internet)');
-  console.log('\n  Press Ctrl+C to stop.\n');
+  try { fs.unlinkSync(STOP_FILE); } catch {}
+  if (process.env.PACK_BACKGROUND) console.log(`\n  Running in the background. Run stop.bat to stop it.\n`);
+  else console.log('\n  Press Ctrl+C to stop.\n');
+  try {
+    fs.mkdirSync(RUN_DIR, { recursive: true });
+    fs.writeFileSync(PID_FILE, String(process.pid));
+  } catch (e) { console.error('  Could not write run/pack-pal.pid:', e.message); }
+  setInterval(() => { if (fs.existsSync(STOP_FILE)) flushAndExit(); }, 1000).unref();
   if (process.env.PACK_OPEN_BROWSER) {
     const url = `http://localhost:${PORT}`;
     const cmd = process.platform === 'win32' ? `start "" ${url}` : process.platform === 'darwin' ? `open ${url}` : `xdg-open ${url}`;

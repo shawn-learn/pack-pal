@@ -1,5 +1,6 @@
 @echo off
-REM Double-click to start Pack Pal. Close this window to stop it.
+REM Double-click to start Pack Pal in the background. Run stop.bat to stop it.
+setlocal
 cd /d "%~dp0"
 where node >nul 2>nul
 if errorlevel 1 (
@@ -10,5 +11,11 @@ if errorlevel 1 (
 REM To require a family password, remove "REM " from the next line and pick a password:
 REM set PACK_PASSWORD=change-me
 set PACK_OPEN_BROWSER=1
-node server.js
-pause
+node scripts\pack-pal-ctl.js start
+if errorlevel 1 (
+  pause
+  exit /b 1
+)
+echo.
+echo   This window closes by itself in 15 seconds.
+timeout /t 15 >nul
