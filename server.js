@@ -54,7 +54,7 @@ function load() {
 
 // Bring an existing data file up to date with new built-in questions,
 // without touching anything the family added or edited themselves.
-const SEED_VERSION = 5;
+const SEED_VERSION = 6;
 function migrate(db) {
   const from = db.seedVersion || 1;
   if (from >= SEED_VERSION) return false;
@@ -112,6 +112,29 @@ function migrate(db) {
     const added = seed.types.filter((t) => newIds.includes(t.id) && !have.has(t.id));
     added.forEach((t) => db.types.push(clone(t)));
     if (added.length) console.log(`  Added ${added.length} new trip types: ${added.map((t) => t.name).join(', ')}.`);
+  }
+  if (from < 6) {
+    // v6: headphones are packed on every trip (they used to be only for flights). Items that
+    // bundled headphones with something else are swapped for the new built-in versions,
+    // unless the family already edited them.
+    const ess = db.types.find((t) => t.essentials);
+    if (ess) {
+      const hp = ess.items.find((i) => i.id === 'headphones');
+      if (!hp) ess.items.push(clone(seed.core.items.find((i) => i.id === 'headphones')));
+      else if (JSON.stringify(hp.when) === JSON.stringify({ flying: 'yes' })) delete hp.when;
+    }
+    const swaps = [
+      ['essentials', 'Books, tablet & kids\' headphones', 'books-tablet'],
+      ['business', 'Noise-cancelling headphones', 'headphones'],
+      ['hospital', 'Headphones & downloaded shows', 'downloaded-shows-movies'],
+    ];
+    for (const [typeId, oldName, newId] of swaps) {
+      const t = db.types.find((x) => x.id === typeId);
+      const s = typeId === 'essentials' ? seed.core : seed.types.find((x) => x.id === typeId);
+      const i = t ? t.items.findIndex((x) => x.name === oldName) : -1;
+      if (i !== -1 && s) t.items[i] = clone(s.items.find((x) => x.id === newId));
+    }
+    console.log('  Headphones are now packed on every trip.');
   }
   db.seedVersion = SEED_VERSION;
   return true;

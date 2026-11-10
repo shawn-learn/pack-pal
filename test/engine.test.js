@@ -171,3 +171,27 @@ test('the newer trip types answer their questions', () => {
   assert.ok(find(via, 'Via ferrata lanyard set', 'kid'));
   assert.ok(!find(via, 'Crampons', 'dad'));
 });
+
+test('deleting a question does not hide the items that depended on it', () => {
+  const ski = JSON.parse(JSON.stringify(type('ski')));
+  const own = E.generate({ core: seed.core, type: ski, trip: { nights: 3, answers: { gear: 'own', sport: 'ski' } }, travelers: fam });
+  const rent = E.generate({ core: seed.core, type: ski, trip: { nights: 3, answers: { gear: 'rent', sport: 'ski' } }, travelers: fam });
+  assert.ok(find(own, 'Skis & poles', 'dad'));
+  assert.ok(!find(rent, 'Skis & poles', 'dad'));
+  assert.ok(!find(own, 'Snowboard', 'dad'));
+  // The family removed the "own or rent?" and "ski or board?" questions.
+  ski.questions = ski.questions.filter((q) => !['gear', 'sport'].includes(q.id));
+  const list = E.generate({ core: seed.core, type: ski, trip: { nights: 3, answers: {} }, travelers: fam });
+  for (const name of ['Skis & poles', 'Ski / snowboard boots', 'Helmet']) assert.ok(find(list, name, 'dad'), name);
+  // Answered questions still count, and so do the ones Pack Pal works out itself.
+  assert.ok(!find(list, 'Lift passes'));
+  assert.ok(!find(list, 'Ski school forms & lunch money'));
+});
+
+test('headphones are packed on every trip', () => {
+  for (const t of seed.types) {
+    const list = gen(t.id, { weather: ['mild'], laundry: 'no', flying: 'no' });
+    assert.ok(list.some((i) => /headphones/i.test(i.name) && i.owner === 'dad'), t.id);
+    assert.equal(list.filter((i) => /headphones/i.test(i.name) && i.owner === 'dad').length, 1, t.id + ' has one pair for dad');
+  }
+});

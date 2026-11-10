@@ -1191,6 +1191,8 @@
       if (q.perDay || q.perNight) tags.push('scales with nights');
       else if ((q.base || 1) > 1) tags.push('×' + q.base);
       if (r.when && Object.keys(r.when).length) tags.push('🔀 ' + plural(Object.keys(r.when).length, 'condition'));
+      const qIds = new Set([...allQuestions().map((q) => q.id), 'days', 'travelers', 'pet']);
+      if (Object.keys(r.when || {}).some((q) => !qIds.has(q))) tags.push('⚠️ uses a deleted question (ignored)');
       return tags.map((t) => `<span class="chip">${esc(t)}</span>`).join('');
     }
 
