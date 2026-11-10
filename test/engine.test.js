@@ -60,6 +60,24 @@ test('trip type item overrides essentials with the same name', () => {
   assert.equal(sunscreen[0].from, 'beach');
 });
 
+test('easy-to-forget answers add the right items on any trip', () => {
+  const without = gen('ski', { weather: ['snow'] });
+  assert.ok(!find(without, 'Swimsuit'));
+  const withPool = gen('ski', { weather: ['snow'], pool: 'yes', eyes: 'yes', flying: 'yes' });
+  assert.ok(find(withPool, 'Swimsuit', 'kid'));
+  assert.ok(find(withPool, 'Contacts & solution'));
+  assert.ok(find(withPool, 'Boarding passes'));
+  assert.ok(find(withPool, 'Gum or lollipops for ear pressure'));
+});
+
+test('easy-to-forget questions are not duplicated by any trip type', () => {
+  const coreIds = new Set(seed.core.questions.map((q) => q.id));
+  for (const t of seed.types) {
+    const dup = t.questions.filter((q) => coreIds.has(q.id)).map((q) => q.id);
+    assert.deepEqual(dup, [], `${t.id} repeats ${dup}`);
+  }
+});
+
 test('nights between dates', () => {
   assert.equal(E.nightsBetween('2026-12-20', '2026-12-27'), 7);
   assert.equal(E.nightsBetween('2026-03-07', '2026-03-09'), 2); // across a DST change

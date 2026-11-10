@@ -295,6 +295,15 @@
     return qs;
   }
 
+  // One page per question, except the quick "easy to forget" checks, which share a final page.
+  function wizardPages() {
+    const qs = wizardQuestions();
+    const pages = qs.filter((q) => !q.group).map((q) => [q]);
+    const grouped = qs.filter((q) => q.group);
+    if (grouped.length) pages.push(grouped);
+    return pages;
+  }
+
   function viewWizard(editTripId) {
     current.static = true;
     if (editTripId) {
@@ -317,7 +326,7 @@
   }
 
   function wizSteps() {
-    const total = 2 + (wiz.typeId ? wizardQuestions().length : 5);
+    const total = 2 + (wiz.typeId ? wizardPages().length : 5);
     let done = 0;
     if (wiz.step === 'details') done = 1;
     if (wiz.step === 'q') done = 2 + wiz.qIndex;
@@ -425,9 +434,10 @@
   }
 
   function wizQuestion() {
-    const qs = wizardQuestions();
+    const qs = wizardPages();
     if (wiz.qIndex >= qs.length) return wizBuild();
-    const q = qs[wiz.qIndex];
+    if (qs[wiz.qIndex].length > 1) return wizChecks(qs);
+    const q = qs[wiz.qIndex][0];
     const type = typeById(wiz.typeId);
     const val = wiz.answers[q.id];
     const opts = q.type === 'yesno' ? [{ value: 'yes', label: '👍 Yes' }, { value: 'no', label: '👎 No' }] : (q.options || []);
@@ -467,6 +477,37 @@
     $('#q-back').onclick = () => { if (wiz.qIndex === 0) wiz.step = 'details'; else wiz.qIndex--; renderWizard(); };
   }
 
+  // The "easy to forget" page: quick yes/no questions on one screen.
+  function wizChecks(pages) {
+    const qs = pages[wiz.qIndex];
+    const type = typeById(wiz.typeId);
+    const last = wiz.qIndex === pages.length - 1;
+    app.innerHTML = `<div class="wizard">${wizSteps()}
+      <div class="question">
+        <div class="row small faint" style="margin-bottom:10px"><span>${type.icon} ${esc(type.name)}</span><span>·</span><span>Last check</span>
+          ${wiz.remembered ? '<span class="chip count">Remembered from last time</span>' : ''}</div>
+        <h2>Easy-to-forget check ✋</h2>
+        <p class="muted">These are the things people most often leave behind. Tap Yes for anything that applies.</p>
+        <div class="list checks" style="margin-top:20px">
+          ${qs.map((q) => `<div class="check-row" data-q="${esc(q.id)}">
+            <span class="item-name">${esc(q.text)}</span>
+            <div class="seg"><button data-v="yes" class="${wiz.answers[q.id] === 'yes' ? 'on yes' : ''}">Yes</button><button data-v="no" class="${wiz.answers[q.id] === 'no' ? 'on' : ''}">No</button></div>
+          </div>`).join('')}
+        </div>
+      </div>
+      <div class="wizard-nav">
+        <button class="btn ghost" id="q-back">← Back</button>
+        <button class="btn primary big" id="q-next">${last ? '🎒 Build my list' : 'Next →'}</button>
+      </div></div>`;
+    $$('.check-row').forEach((row) => $$('button', row).forEach((b) => (b.onclick = () => {
+      wiz.answers[row.dataset.q] = b.dataset.v;
+      $$('button', row).forEach((x) => x.classList.toggle('on', x === b));
+      $$('button', row).forEach((x) => x.classList.toggle('yes', x === b && b.dataset.v === 'yes'));
+    })));
+    $('#q-next').onclick = () => { wiz.qIndex++; renderWizard(); };
+    $('#q-back').onclick = () => { if (wiz.qIndex === 0) wiz.step = 'details'; else wiz.qIndex--; renderWizard(); };
+  }
+
   async function wizBuild() {
     wiz.step = 'build';
     const type = typeById(wiz.typeId);
@@ -503,7 +544,7 @@
     } catch (e) {
       clearInterval(iv);
       fail(e);
-      wiz.step = 'q'; wiz.qIndex = Math.max(0, wizardQuestions().length - 1); renderWizard();
+      wiz.step = 'q'; wiz.qIndex = Math.max(0, wizardPages().length - 1); renderWizard();
     }
   }
 
@@ -1028,9 +1069,11 @@
       <div class="trip-head" style="--c:${draft.color}" id="te-head"></div>
       <div class="section-title"><h2>Basics</h2></div>
       <div class="card stack" id="te-basics"></div>
-      ${draft.essentials ? '' : `<div class="section-title"><h2>Questions</h2><button class="btn small" id="te-addq">＋ Add question</button></div>
-        <p class="muted small" style="margin:-6px 0 12px">Asked when you plan this kind of trip. Use the answers in item rules below. The weather and laundry questions from Everyday essentials are always asked too.</p>
-        <div id="te-qs"></div>`}
+      <div class="section-title"><h2>Questions</h2><button class="btn small" id="te-addq">＋ Add question</button></div>
+        <p class="muted small" style="margin:-6px 0 12px">${draft.essentials
+          ? 'Asked on every trip. Yes/no questions marked "easy-to-forget check" all appear together on one quick screen at the end.'
+          : 'Asked when you plan this kind of trip. Use the answers in item rules below. The questions from Everyday essentials, including the easy-to-forget check, are always asked too.'}</p>
+        <div id="te-qs"></div>
       <div class="section-title"><h2>What to pack</h2><button class="btn small" id="te-additem">＋ Add item</button></div>
       <p class="muted small" style="margin:-6px 0 12px">Click an item to set who it's for, how many, and when to include it.</p>
       <div id="te-items"></div>
@@ -1074,11 +1117,14 @@
           <button class="icon-btn q-up" title="Move up">↑</button><button class="icon-btn q-del" title="Delete question">✕</button></div>
         ${q.type === 'choice' || q.type === 'multi' ? `<div class="row" style="margin-top:10px">${(q.options || []).map((o, oi) => `<span class="chip">${esc(o.label)} <button class="icon-btn q-odel" data-oi="${oi}" style="width:20px;height:20px;font-size:.7rem">✕</button></span>`).join('')}
           <input class="input sm q-onew" placeholder="Add an answer, press Enter" style="width:220px"></div>` : ''}
+        ${q.type === 'yesno' ? `<label class="check small" style="margin-top:8px"><input type="checkbox" class="q-group" ${q.group === 'forgot' ? 'checked' : ''}> Part of the easy-to-forget check</label>` : ''}
       </div>`).join('');
       $$('.q-card', root).forEach((card) => {
         const q = draft.questions[Number(card.dataset.qi)];
         $('.q-text', card).oninput = (e) => { q.text = e.target.value; markDirty(); };
-        $('.q-type', card).onchange = (e) => { q.type = e.target.value; if ((q.type === 'choice' || q.type === 'multi') && !q.options) q.options = []; questions(); markDirty(); };
+        $('.q-type', card).onchange = (e) => { q.type = e.target.value; if (q.type !== 'yesno') delete q.group; if ((q.type === 'choice' || q.type === 'multi') && !q.options) q.options = []; questions(); markDirty(); };
+        const grp = $('.q-group', card);
+        if (grp) grp.onchange = (e) => { if (e.target.checked) q.group = 'forgot'; else delete q.group; markDirty(); };
         $('.q-del', card).onclick = () => { draft.questions.splice(Number(card.dataset.qi), 1); questions(); items(); markDirty(); };
         $('.q-up', card).onclick = () => { const i = Number(card.dataset.qi); if (i > 0) { [draft.questions[i - 1], draft.questions[i]] = [draft.questions[i], draft.questions[i - 1]]; questions(); markDirty(); } };
         $$('.q-odel', card).forEach((b) => (b.onclick = () => { q.options.splice(Number(b.dataset.oi), 1); questions(); markDirty(); }));

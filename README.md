@@ -23,6 +23,7 @@ The startup window also prints an **"On your Wi-Fi"** address such as `http://19
 ## What's inside
 
 - **13 trip types:** ski, rock climbing, paddle boarding, hiking, mountain biking, camping, beach, road trip, visiting family, international, city break, business and cruise. Each one has its own questions, plus two shared ones about weather and laundry. The rock climbing and hiking lists draw on the MEC checklists.
+- **Easy-to-forget check:** every trip ends with one quick screen of yes/no questions about the things people most often leave behind, such as "Is there a hot tub or pool where you're staying?", "Does anyone wear glasses or contacts?" and "Any birthdays during the trip?". You can add your own under **Trip types → Everyday essentials** by ticking "Part of the easy-to-forget check".
 - **Smart quantities:** clothing scales with the number of days, gets capped when you'll have laundry, and is counted per person.
 - **Remembers your answers:** the next trip of the same type starts with last time's answers already filled in.
 - **Learns as you go:** after adding something to a trip, tap **"Always pack for Ski trip"**. When a trip is over, use **⋯ → Trip done: review & learn**.

@@ -3,6 +3,8 @@
 
 // Small helpers to keep the lists readable.
 const yesno = (id, text, help) => ({ id, text, type: 'yesno', help });
+// Quick yes/no checks for commonly forgotten things. The wizard shows them together on one screen.
+const forgot = (id, text) => ({ id, text, type: 'yesno', group: 'forgot' });
 const choice = (id, text, options, help) => ({ id, text, type: 'choice', options: opts(options), help });
 const multi = (id, text, options, help) => ({ id, text, type: 'multi', options: opts(options), help });
 const opts = (o) => Object.entries(o).map(([value, label]) => ({ value, label }));
@@ -29,6 +31,18 @@ const core = {
   questions: [
     multi('weather', 'What weather are you expecting?', { hot: '☀️ Hot', mild: '🌤️ Mild', cold: '🥶 Cold', rain: '🌧️ Rain', snow: '❄️ Snow' }, 'Pick all that apply.'),
     yesno('laundry', 'Will you be able to do laundry?', 'If yes, clothing is capped so you don\'t overpack.'),
+    forgot('pool', 'Is there a hot tub or pool where you\'re staying?'),
+    forgot('dressy', 'Any dressy dinners, weddings or events?'),
+    forgot('workout', 'Planning to work out or go for a run?'),
+    forgot('flying', 'Are you flying?'),
+    forgot('celebration', 'Any birthdays or celebrations during the trip?'),
+    forgot('eyes', 'Does anyone wear glasses or contacts?'),
+    forgot('linens', 'Staying somewhere without towels or bedding (cabin, rental)?'),
+    forgot('kitchen', 'Will you have a kitchen to cook in?'),
+    forgot('sleep', 'Sharing rooms, or any light sleepers?'),
+    forgot('work', 'Will anyone need to do some work?'),
+    forgot('dark', 'Any early starts or evenings outside in the dark?'),
+    forgot('pet', 'Is a pet coming?'),
   ],
   items: [
     // Clothing
@@ -86,6 +100,42 @@ const core = {
     it('Reusable water bottle', 'gear', each({ who: BIG })),
     it('Laundry bag', 'misc', { when: { nights: { gte: 2 } } }),
     it('Zip-top bags', 'misc', { note: 'For leaks, wet things, and snacks.' }),
+    // Commonly forgotten (answered on the "easy to forget" screen)
+    it('Swimsuit', 'clothing', each({ when: { pool: 'yes' } })),
+    it('Flip-flops', 'clothing', each({ when: { pool: 'yes' } })),
+    it('Swim goggles', 'kids', each({ who: KIDS, when: { pool: 'yes' } })),
+    it('Swim diapers', 'kids', { who: BABY, qty: { base: 2, perDay: 1, max: 8 }, when: { pool: 'yes' } }),
+    it('Dressy outfit', 'clothing', each({ who: BIG, when: { dressy: 'yes' } })),
+    it('Dress shoes', 'clothing', each({ who: BIG, when: { dressy: 'yes' } })),
+    it('Jewelry, tie or accessories', 'clothing', each({ who: ADULT, when: { dressy: 'yes' } })),
+    it('Workout clothes', 'clothing', each({ who: ADULT, qty: { base: 1, perNight: 0.5, max: 3 }, when: { workout: 'yes' } })),
+    it('Running shoes', 'clothing', each({ who: ADULT, when: { workout: 'yes' } })),
+    it('Boarding passes', 'documents', { when: { flying: 'yes' }, note: 'Saved in your phone wallet.' }),
+    it('Liquids bag (3-1-1)', 'toiletries', { when: { flying: 'yes' }, note: 'Containers up to 3.4 oz / 100 ml for carry-ons.' }),
+    it('Headphones', 'electronics', each({ who: BIG, when: { flying: 'yes' } })),
+    it('Empty water bottle for after security', 'gear', each({ who: BIG, when: { flying: 'yes' } })),
+    it('Gum or lollipops for ear pressure', 'kids', { who: KIDS, when: { flying: 'yes' } }),
+    it('Birthday gift', 'misc', { when: { celebration: 'yes' } }),
+    it('Card', 'misc', { when: { celebration: 'yes' } }),
+    it('Candles & lighter', 'misc', { when: { celebration: 'yes' } }),
+    it('Glasses & case', 'health', { when: { eyes: 'yes' } }),
+    it('Contacts & solution', 'health', { when: { eyes: 'yes' }, note: 'Plus a spare pair.' }),
+    it('Bath towels', 'misc', each({ when: { linens: 'yes' } })),
+    it('Sheets & pillowcases', 'misc', { when: { linens: 'yes' } }),
+    it('Toilet paper', 'misc', { when: { linens: 'yes' } }),
+    it('Dish soap & sponge', 'food', { when: { linens: 'yes' } }),
+    it('Coffee or tea you like', 'food', { when: { kitchen: 'yes' } }),
+    it('Salt, pepper, oil & favorite spices', 'food', { when: { kitchen: 'yes' } }),
+    it('Sharp knife', 'food', { when: { kitchen: 'yes' }, note: 'Rental knives are always dull.' }),
+    it('Earplugs & eye mask', 'health', each({ who: BIG, when: { sleep: 'yes' } })),
+    it('White noise app or machine', 'electronics', { when: { sleep: 'yes' } }),
+    it('Laptop & charger', 'electronics', each({ who: ADULT, when: { work: 'yes' } })),
+    it('Headlamp', 'gear', each({ who: BIG, when: { dark: 'yes' } })),
+    it('Pet food', 'misc', { qty: { base: 1, perDay: 1 }, when: { pet: 'yes' }, note: 'Servings.' }),
+    it('Leash, collar & ID tag', 'misc', { when: { pet: 'yes' } }),
+    it('Pet bowls', 'misc', { when: { pet: 'yes' } }),
+    it('Poop bags', 'misc', { when: { pet: 'yes' } }),
+    it('Pet bed or crate', 'misc', { when: { pet: 'yes' } }),
   ],
 };
 
@@ -98,7 +148,6 @@ const types = [
       yesno('swim', 'Will you be swimming?'),
       yesno('beachgear', 'Is beach gear provided (towels, chairs, umbrella)?', 'Many rentals and resorts provide these.'),
       yesno('snorkel', 'Any snorkeling or water sports?'),
-      yesno('dinners', 'Any nice dinners out?'),
       yesno('cooler', 'Bringing your own food and drinks to the beach?'),
     ],
     items: [
@@ -117,7 +166,6 @@ const types = [
       it('Sunscreen', 'toiletries', { qty: { base: 1, perNight: 0.25 }, note: 'Reef-safe SPF 50. Reapply every 2 hours.' }),
       it('After-sun aloe', 'toiletries'),
       it('Waterproof phone pouch', 'electronics'),
-      it('Dinner outfit', 'clothing', each({ who: BIG, when: { dinners: 'yes' } })),
       it('Cooler & ice packs', 'food', { when: { cooler: 'yes' } }),
       it('Beach snacks & drinks', 'food', { when: { cooler: 'yes' } }),
       it('Sunglasses', 'clothing', each()),
@@ -220,7 +268,6 @@ const types = [
       choice('gear', 'Bringing your own skis/boards or renting?', { own: 'Bringing our own', rent: 'Renting there' }),
       choice('sport', 'Skiing or snowboarding?', { ski: '⛷️ Skiing', board: '🏂 Snowboarding', both: 'Both' }),
       yesno('school', 'Any kids in ski school?'),
-      yesno('hottub', 'Hot tub or pool where you\'re staying?'),
       yesno('passes', 'Lift passes bought ahead?'),
     ],
     items: [
@@ -243,7 +290,6 @@ const types = [
       it('SPF lip balm', 'toiletries', each({ who: BIG })),
       it('Sunscreen', 'toiletries', { note: 'Snow reflects a lot of sun.' }),
       it('Ski school forms & lunch money', 'documents', { who: KIDS, when: { school: 'yes' } }),
-      it('Swimsuit', 'clothing', each({ when: { hottub: 'yes' } })),
       it('Slippers', 'clothing', each()),
       it('Boot dryer', 'electronics'),
       it('Hot cocoa packets', 'food'),
@@ -256,8 +302,6 @@ const types = [
     questions: [
       choice('dress', 'What\'s the dress code?', { formal: 'Suit & tie / formal', smart: 'Business casual', casual: 'Casual' }),
       yesno('present', 'Are you presenting?'),
-      yesno('events', 'Any evening dinners or events?'),
-      yesno('workout', 'Planning to work out?'),
       yesno('carryon', 'Carry-on only?'),
     ],
     items: [
@@ -276,10 +320,6 @@ const types = [
       it('Business cards', 'documents'),
       it('Notebook & pen', 'misc'),
       it('Noise-cancelling headphones', 'electronics'),
-      it('Evening outfit', 'clothing', each({ who: ADULT, when: { events: 'yes' } })),
-      it('Workout clothes', 'clothing', each({ who: ADULT, qty: { base: 1, perNight: 0.5, max: 3 }, when: { workout: 'yes' } })),
-      it('Running shoes', 'clothing', each({ who: ADULT, when: { workout: 'yes' } })),
-      it('Liquids bag (3-1-1)', 'toiletries', { when: { carryon: 'yes' }, note: 'Containers up to 3.4 oz / 100 ml.' }),
       it('Travel steamer or wrinkle spray', 'misc'),
       it('Expense receipts envelope', 'documents'),
     ],
@@ -290,7 +330,6 @@ const types = [
     defaults: { weather: ['mild'] },
     questions: [
       yesno('walking', 'Doing lots of walking?'),
-      yesno('dinners', 'Any nice dinners or shows?'),
       yesno('tickets', 'Tickets or tours booked ahead?'),
       choice('transport', 'How will you get around?', { transit: '🚇 Public transit', car: '🚗 Car', walk: '🚶 Mostly walking' }),
       yesno('shopping', 'Planning to shop?'),
@@ -298,8 +337,6 @@ const types = [
     items: [
       it('Comfortable walking shoes', 'clothing', each({ who: BIG, qty: { base: 2 }, when: { walking: 'yes' }, note: 'Two pairs so you can swap.' })),
       it('Day bag / crossbody', 'gear', each({ who: ADULT })),
-      it('Dressy outfit', 'clothing', each({ who: BIG, when: { dinners: 'yes' } })),
-      it('Dress shoes', 'clothing', each({ who: BIG, when: { dinners: 'yes' } })),
       it('Tickets & reservations', 'documents', { when: { tickets: 'yes' }, note: 'Screenshot them in case there\'s no signal.' }),
       it('Transit card / app set up', 'documents', { when: { transport: 'transit' } }),
       it('Parking app set up', 'electronics', { when: { transport: 'car' } }),
@@ -319,7 +356,6 @@ const types = [
     questions: [
       choice('drive', 'How long are the driving days?', { short: 'Under 4 hours', long: '4+ hours' }),
       yesno('stops', 'Staying in more than one place?'),
-      yesno('pet', 'Bringing a pet?'),
       yesno('remote', 'Driving through remote areas?'),
       yesno('carsick', 'Anyone get carsick?'),
     ],
@@ -344,18 +380,13 @@ const types = [
       it('Overnight bag', 'gear', { when: { stops: 'yes' }, note: 'One small bag with a night\'s worth of stuff so you don\'t unload the car at every stop.' }),
       it('Extra water & non-perishable food', 'food', { when: { remote: 'yes' } }),
       it('Paper map', 'gear', { when: { remote: 'yes' } }),
-      it('Pet food', 'misc', { qty: { base: 1, perDay: 1 }, when: { pet: 'yes' }, note: 'Servings.' }),
-      it('Leash, collar & ID tag', 'misc', { when: { pet: 'yes' } }),
-      it('Pet bowls', 'misc', { when: { pet: 'yes' } }),
-      it('Pet bed or crate', 'misc', { when: { pet: 'yes' } }),
       it('Vet records', 'documents', { when: { pet: 'yes' } }),
-      it('Poop bags', 'misc', { when: { pet: 'yes' } }),
     ],
   },
   {
     id: 'international', name: 'International', icon: '✈️', color: '#7c3aed',
     description: 'Passports, plugs and new places.',
-    defaults: { weather: ['mild'] },
+    defaults: { weather: ['mild'], flying: 'yes' },
     questions: [
       yesno('visa', 'Do you need a visa?'),
       yesno('plug', 'Do they use different power outlets?'),
@@ -374,7 +405,6 @@ const types = [
       it('Neck pillow', 'fun', each({ when: { longhaul: 'yes' } })),
       it('Eye mask & earplugs', 'fun', each({ who: BIG, when: { longhaul: 'yes' } })),
       it('Compression socks', 'health', each({ who: ADULT, when: { longhaul: 'yes' } })),
-      it('Headphones', 'electronics', each({ who: BIG })),
       it('Change of clothes in carry-on', 'clothing', each({ note: 'In case your bag is delayed.' })),
       it('Some local cash', 'documents', { when: { currency: 'yes' } }),
       it('Card with no foreign transaction fees', 'documents', { when: { currency: 'yes' } }),
@@ -423,7 +453,6 @@ const types = [
       yesno('excursions', 'Going on shore excursions?'),
       yesno('passport', 'Leaving the country?'),
       yesno('seasick', 'Anyone prone to seasickness?'),
-      yesno('pool', 'Planning to use the pool?'),
     ],
     items: [
       it('Cruise boarding documents', 'documents'),

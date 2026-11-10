@@ -224,6 +224,11 @@ a.chip { text-decoration: none; }
 .answer.on { border-color: var(--brand); background: color-mix(in srgb, var(--brand) 12%, var(--card)); }
 .answer .tick { float: right; opacity: 0; }
 .answer.on .tick { opacity: 1; }
+.check-row { display: flex; align-items: center; gap: 14px; padding: 12px 14px; border-top: 1px solid var(--line); }
+.check-row:first-child { border-top: 0; }
+.check-row .item-name { flex: 1; }
+.check-row .seg { flex: none; }
+.check-row .seg button.yes { background: var(--brand); color: var(--brand-ink); }
 .wizard-nav { display: flex; justify-content: space-between; margin-top: 32px; }
 .people { display: flex; flex-wrap: wrap; gap: 10px; }
 .person {
