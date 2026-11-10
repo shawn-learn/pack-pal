@@ -33,7 +33,7 @@ The startup window also prints an **"On your Wi-Fi"** address such as `http://19
 - **Smart quantities:** clothing scales with the number of days, gets capped when you'll have laundry, and is counted per person.
 - **Remembers your answers:** the next trip of the same type starts with last time's answers already filled in.
 - **Learns as you go:** after adding something to a trip, tap **"Always pack for Ski trip"**. When a trip is over, use **⋯ → Trip done: review & learn**.
-- **Edit everything:** under **Trip types** you can change questions, items, who an item is for, how many to bring and when it's included (for example, "only if Bringing your own skis = yes"). You can also create new trip types, starting blank or from a copy.
+- **Edit everything:** under **Trip types** you can change questions, items, who an item is for, how many to bring and when it's included (for example, "only if Bringing your own skis = yes"). If you delete a question, items that depended on it are simply always included, so nothing quietly disappears from your lists. You can also create new trip types, starting blank or from a copy.
 - **Live sync:** several people can pack at once, and ticks show up everywhere within a second.
 - **Everyone view:** one row per item with a tickable face for each person. You can also switch to **By person** or tap someone's tab.
 - Print, copy as text, untick everything for the trip home, dark mode, and confetti when you finish 🎉
